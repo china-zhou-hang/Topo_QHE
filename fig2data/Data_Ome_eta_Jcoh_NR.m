@@ -17,7 +17,7 @@ S23=e2*e3'; S23d=S23';
 E1 = 0; E2 = 1451; E3 = 13229; E4 = 14840;
 H0 = diag([E1,E2,E3,E4]);
 
-nh=60000; rh = 0.005; rc=140; Gc=200;
+nh=10000; rh = 0.0018; rc=18; Gc=200;
 nc=0; Nc=0; 
 phi=0; 
 omega43=(E4-E3);
@@ -27,7 +27,7 @@ p.S14=S14; p.S14d=S14d; p.S34=S34; p.S34d=S34d;
 p.S12=S12; p.S12d=S12d; p.S23=S23; p.S23d=S23d;
 p.rh=rh; p.rc=rc; p.Gc=Gc; p.nh=nh; p.nc=nc; p.Nc=Nc;
 p.phi=phi; p.H0=H0; p.omega43=omega43;
-V=0.92;
+V=0.95;
 p.Delta = 0;
 p.G     = 200*exp(11778*(1-V)/208.5);
 
@@ -35,7 +35,7 @@ p.G     = 200*exp(11778*(1-V)/208.5);
 rho0 = P1; y0 = rho0(:);
 
 %% ---------- time grid & solver ----------
-Omelist  = linspace(0,4,10)*1611; 
+Omelist  = linspace(0,0.6,10)*1611; 
 wdrive = p.omega43 + p.Delta;
 T = 2*pi/abs(wdrive);
 
@@ -70,7 +70,7 @@ for iO = 1:nO
     % ---------- Non-RWA evolution ----------
     [tNR, yNR] = ode15s(@(t,y) rhs_norwa(t,y,p_loc), tspan, y0, opts);
 
-    selN = tNR >= (Tend - 10*T);
+    selN = tNR >= (Tend - 100*T);
     t_last = tNR(selN);
     y_last = yNR(selN,:);
     NN = size(y_last,1);
@@ -81,7 +81,6 @@ for iO = 1:nO
     for k = 1:NN
         R = reshape(y_last(k,:),4,4);
         theta = wdrive*t_last(k) + p_loc.phi;
-
         rho22(k) = real(R(2,2));
         rho33(k) = real(R(3,3));
         rho44(k) = real(R(4,4));
@@ -112,7 +111,6 @@ for iO = 1:nO
     for k = 1:NN
         R = reshape(y_last(k,:),4,4);
         theta = wdrive*t_last(k) + p_loc.phi;
-
         rho22(k) = real(R(2,2));
         rho33(k) = real(R(3,3));
         rho44(k) = real(R(4,4));
@@ -133,7 +131,7 @@ end
 
 toc
 %% 
-close all
+% close all
 x = Omelist/1611;
 figure('Color','w','Position',[100 120 1200 1400]);
 
@@ -142,20 +140,20 @@ plot(x, NR_eta_1D, '-o', 'DisplayName','Non-RWA'); hold on;
 plot(x, RWA_eta_1D,'-s', 'DisplayName','RWA');
 legend('Location','best'); xlim([min(x) max(x)]);
 
-subplot(2,2,2);
-plot(x, NR_Jcoh_1D, '-o', 'DisplayName','Non-RWA'); hold on;
-plot(x, RWA_Jcoh_1D,'-s', 'DisplayName','RWA');
-legend('Location','best'); xlim([min(x) max(x)]);
-
-subplot(2,2,3);
-plot(x, NR_rho43_1D, '-o', 'DisplayName','Non-RWA'); hold on;
-plot(x, RWA_rho43_1D,'-s', 'DisplayName','RWA');
-legend('Location','best'); xlim([min(x) max(x)]);
-
-subplot(2,2,4);
-relErr_eta = (NR_eta_1D - RWA_eta_1D)./NR_eta_1D;
-plot(x, relErr_eta, '-o', 'DisplayName','(NR-RWA)/NR');
-legend('Location','best'); xlim([min(x) max(x)]);
+% subplot(2,2,2);
+% plot(x, NR_Jcoh_1D, '-o', 'DisplayName','Non-RWA'); hold on;
+% plot(x, RWA_Jcoh_1D,'-s', 'DisplayName','RWA');
+% legend('Location','best'); xlim([min(x) max(x)]);
+% 
+% subplot(2,2,3);
+% plot(x, NR_rho43_1D, '-o', 'DisplayName','Non-RWA'); hold on;
+% plot(x, RWA_rho43_1D,'-s', 'DisplayName','RWA');
+% legend('Location','best'); xlim([min(x) max(x)]);
+% 
+% subplot(2,2,4);
+% relErr_eta = (NR_eta_1D - RWA_eta_1D)./NR_eta_1D;
+% plot(x, relErr_eta, '-o', 'DisplayName','(NR-RWA)/NR');
+% legend('Location','best'); xlim([min(x) max(x)]);
 
 NR_eta_1D01=NR_eta_1D;
 save('NR_eta_1D01.mat', 'NR_eta_1D01');
@@ -166,9 +164,8 @@ save('NR_eta_1D01.mat', 'NR_eta_1D01');
 function dy = rhs_rwa(t,y,p)
     rho = reshape(y,4,4);
     wdrive = p.omega43 + p.Delta;
-    Hdrive = p.Omega*( exp(-1i*(wdrive*t + p.phi))*p.S34 ...
-                     + exp( 1i*(wdrive*t + p.phi))*p.S34d );
-    Hlab = p.H0 + Hdrive;
+    Hdrive = p.Omega*(p.S34+ p.S34d);
+    Hlab = Hdrive;
     drho = -1i*(Hlab*rho - rho*Hlab);
     drho = drho + dissipators(rho,p);
     dy = drho(:);
